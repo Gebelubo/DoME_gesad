@@ -165,3 +165,5 @@ if DEBUG_MODE:
     MANAGED_SYSTEM_WEBAPP_BASE_URL = 'http://127.0.0.1'
 
 MANAGED_SYSTEM_WEBAPP_BASE_URL += '/admin/managedsys_web'
+
+TEST_MODE = False

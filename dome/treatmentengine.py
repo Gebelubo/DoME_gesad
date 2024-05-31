@@ -1,3 +1,6 @@
+import tests.tests
+
+
 class TreatmentEngine:
     def __init__(self, parser):
         self.__MP = parser
@@ -91,18 +94,20 @@ class ResponseChecker:
         return True
 
     def key_test(self, *args):
-        print(args)
         if args[0] in args[1]:  # if the attribute value is equal to the name
+            tests.tests.add_treaments('key_error')
             return False
         return True
 
     def and_test(self, *args):
         if " and " in args[1]:  # if there is "and" in the answer
+            tests.tests.add_treaments('and_error')
             return False
         return True
 
     def entity_test(self, *args):
         if self.entity in args[1]:  # if the entity name is in the attribute value
+            tests.tests.add_treaments('entity_error')
             return False
         return True
 
@@ -110,6 +115,7 @@ class ResponseChecker:
         if args[2] is not None:  # if some other attribute name is in the attribute value
             for keys in list(args[2].keys()):
                 if keys in args[1]:
+                    tests.tests.add_treaments('attribute_error')
                     return False
         return True
 
@@ -118,6 +124,7 @@ class ResponseChecker:
         propn = False
         for token in tokens:  # if there is a pronoun followed by a comma
             if propn == True and token['entity'] == 'PUNCT':
+                tests.tests.add_treaments('pronoun_error')
                 return False
             if token['entity'] == 'PROPN':
                 propn = True
@@ -137,6 +144,7 @@ class ResponseChecker:
                     tokens_entity.append(token['entity'])
 
         if 'PROPN' in tokens_entity or 'NUM' in tokens_entity:
+            tests.tests.add_treaments('ignoring_error')
             return False
         return True
 
@@ -154,6 +162,7 @@ class ResponseChecker:
             return True
 
         if float_find in args[1] and (',' not in args[1] and '.' not in args[1]):
+            tests.tests.add_treaments('float_error')
             return False
 
         return True
@@ -177,22 +186,26 @@ class ResponseFixer:
         question += "\nThis is the user command: '" + self.user_msg + "'."
         question += "\nThe entity class is '" + str(self.entity) + "'."
 
-        if prompt == "simplified":  # simplifying the prompt
+        if prompt == "simplified_all":  # simplifying the prompt
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             context = 'The answer is a substring of "' + fragment_short + '".'
+            tests.tests.add_treaments('simplified_prompt_treatment')
         elif prompt == "simplified_question":  # simplifying the question and enhancing the context
             question = "What is the '" + key + "' in the sentence fragment?"
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             context = "\nThis is the user command: '" + self.user_msg + "'."
             context += 'The answer is a substring of "' + fragment_short + '".'
+            tests.tests.add_treaments('simplified_question_prompt_treatment')
         elif prompt == "invalid_and":  # case the answer is returning a word after an 'and'
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             fragment_short = fragment_short.split('and')[0]
             context = 'The answer is a substring of "' + fragment_short + '".'
+            tests.tests.add_treaments('and_prompt_treatment')
         elif prompt == "invalid_comma":  # case the answer is returning a word after an invalid ','
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             fragment_short = fragment_short.split(',')[0]
             context = 'The answer is a substring of "' + fragment_short + '".'
+            tests.tests.add_treaments('comma_prompt_treatment')
         else:
             context = ''
             fragment_short = ''
@@ -207,4 +220,5 @@ class ResponseFixer:
         # getting everything after the attribute key and before an addition marker
         fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
         fragment_short = fragment_short.split('and')[0]
+        tests.tests.add_treaments('and_comma_string_treatment')
         return fragment_short

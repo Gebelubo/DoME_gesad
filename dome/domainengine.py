@@ -1,3 +1,4 @@
+import tests.tests
 from dome.auxiliary.entity import Entity
 import sqlite3
 import pandas as pd
@@ -104,6 +105,8 @@ class DomainEngine:
 
         sql_cmd = sql_cmd[:-2]  # removing the last comma
         sql_cmd += ")"
+        print("generated query")
+        tests.tests.add('generated_query', sql_cmd)
         self.__executeSqlCmd(sql_cmd)
 
     def update(self, entity, attributes, where_clause):
@@ -143,6 +146,7 @@ class DomainEngine:
                 else:
                     sql_cmd += "LOWER(" + k + ") = LOWER('" + where_clause[k] + "') AND "
             sql_cmd = sql_cmd[:-4]  # removing the last AND
+            tests.tests.add('generated_query', sql_cmd)
         return self.__executeSqlCmd(sql_cmd)
 
     def read(self, entity, attributes):
@@ -181,6 +185,7 @@ class DomainEngine:
                 results = pd.DataFrame.from_records(data=data, columns=cols, index=['id'])
                 results.drop(['dome_created_at', 'dome_updated_at'], axis=1, inplace=True)
                 print(sql_cmd)
+                tests.tests.add('generated_query', sql_cmd)
                 return results
             else:
                 return None  # there is no that attribute in entity
@@ -205,4 +210,5 @@ class DomainEngine:
         for k in attributes.keys():
             sql_cmd += "LOWER(" + k + ") = LOWER('" + attributes[k] + "') AND "
         sql_cmd = sql_cmd[:-4]  # removing the last AND
+        tests.tests.add('generated_query', sql_cmd)
         return self.__executeSqlCmd(sql_cmd)

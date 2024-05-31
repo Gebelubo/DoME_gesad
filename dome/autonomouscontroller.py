@@ -3,6 +3,7 @@ import random
 import time
 import logging, logging.config
 
+from dome import config
 from dome.aiengine import AIEngine, Intent
 from dome.auxiliary.constants import (
     OPR_APP_HOME_CMD,
@@ -409,6 +410,12 @@ class AutonomousController:
         return_dict["user_data"] = user_data
         return_dict["parser"] = parser
         return_dict["debug_info"] = "---debug info:\n[" + msg + "]"
+
+        if config.TEST_MODE:
+            if not msg == 'ok':
+                self.app_chatbot_msg_process(
+                    "ok", user_data=user_data
+                )
 
         return return_dict
 

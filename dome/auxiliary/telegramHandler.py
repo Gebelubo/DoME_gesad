@@ -4,6 +4,9 @@ import os
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import datetime as dth
 
+import tests.tests
+from dome import config
+
 
 class TelegramHandler:
     def __init__(self, msg_handler) -> None:
@@ -62,12 +65,23 @@ class TelegramHandler:
                     msg = 'hi'
                 elif msg == '/help':
                     msg = 'help'
+                elif msg == '/test_mode':  # activating the test mode
+                    config.TEST_MODE = True
 
                 if update.message.date:
                     dth_income_message = update.message.date.astimezone()
 
+            if config.TEST_MODE:
+                msg = tests.tests.return_data()['input']
+                tests.tests.add_input_line()
+                if msg == "None":
+                    config.TEST_MODE = False
+                    tests.tests.write()
+                    msg = 'hi'
             response = self.__MSG_HANDLER(msg, context, dth_income_message)
-
+            if config.TEST_MODE:
+                tests.tests.add('generated_result', response)
+                tests.tests.add_output_line()
             try:
                 update.message.reply_text(response, parse_mode='HTML')
             except Exception:
@@ -79,6 +93,8 @@ class TelegramHandler:
                 update.message.reply_text(processed_text, parse_mode='Markdown')
 
             self.__tryagain = True  # msg processed, then the control variable is set to True
+            if config.TEST_MODE:
+                self.echo(update, context)
 
     def error(self, update, context):
         if (self.__tryagain  # only if the msg was not processed and only once

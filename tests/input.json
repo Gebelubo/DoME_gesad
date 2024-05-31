@@ -1,0 +1,15 @@
+[
+  {
+    "input": "add student with name Jorge",
+    "expected_query": "INSERT INTO student (name) VALUES ('Jorge');",
+    "expected_result": "result"
+  },
+  {
+    "input": "add student with name Pedro",
+    "expected_query": "INSERT INTO student (name) VALUES ('Pedro');",
+    "expected_result": "result"
+  },
+  {
+    "input": "None"
+  }
+]
