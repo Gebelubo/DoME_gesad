@@ -1,19 +1,16 @@
 import json
-
+import os
 
 def read():
-    data = 'C:\\Users\\Gabriel\\OneDrive\\Área de Trabalho\\dome - repositorio\\dome_gesad\\tests\\input.json'
+    data = os.path.abspath(os.path.join(os.path.dirname(__file__), 'input.json'))
     with open(data, 'r') as file:
         return json.load(file)
 
 
 def write():
-    output_file = 'C:\\Users\\Gabriel\\OneDrive\\Área de Trabalho\\dome - repositorio\\dome_gesad\\tests\\output.json'
-    print("escrevera")
-    print(output)
+    output_file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'output.json'))
     with open(output_file, 'w') as file:
         json.dump(output, file, indent=4)
-    print("escreveu")
 
 
 def initialize_line():
