@@ -9,6 +9,18 @@
     "expected_query": "INSERT INTO student (name) VALUES ('Pedro');",
     "expected_result": "result"
   },
+  {"input": "add customer with name Paulo Henrique and subtotal 20,50",
+   "expected_query": "INSERT INTO student (name) VALUES ('Jorge');",
+   "expected_result": "result"
+  },
+  {"input": "add customer with name Lucas and age 30",
+  "expected_query": "INSERT INTO student (name) VALUES ('Jorge');",
+  "expected_result": "result"
+  },
+  {"input": "add customer with name Manoel, subtotal Gabriel and age 40,8",
+  "expected_query": "INSERT INTO student (name) VALUES ('Jorge');",
+  "expected_result": "result"
+  },
   {
     "input": "None"
   }

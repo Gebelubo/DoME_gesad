@@ -14,7 +14,7 @@ from dome.config import (PNL_GENERAL_THRESHOLD, USELESS_EXPRESSIONS_FOR_INTENT_D
                          PRINT_DEBUG_MSGS, DATE_KEYWORDS, ANALYTICS)
 from dome.treatmentengine import TreatmentEngine
 from util import list_util
-
+import tests.tests
 
 class AIEngine(DAO):
     def get_db_file_name(self) -> str:

@@ -16,6 +16,7 @@ class TreatmentEngine:
         if not self.response_validate({key: new_response}):
             self.change_model()
             new_response = self.__TM.manage(key, value, processed_attributes)
+        tests.tests.add_treaments("output " + key + ": " + new_response)
         return new_response
 
     def tokenize(self, msg):
@@ -42,7 +43,6 @@ class TreatmentManager:
         self.__RF = fixer_obj
 
     def manage(self, key, value, processed_attributes):
-
         valid = self.__RC.check(key, value, processed_attributes)
 
         if valid:
@@ -95,18 +95,21 @@ class ResponseChecker:
 
     def key_test(self, *args):
         if args[0] in args[1]:  # if the attribute value is equal to the name
+            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
             tests.tests.add_treaments('key_error')
             return False
         return True
 
     def and_test(self, *args):
         if " and " in args[1]:  # if there is "and" in the answer
+            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
             tests.tests.add_treaments('and_error')
             return False
         return True
 
     def entity_test(self, *args):
         if self.entity in args[1]:  # if the entity name is in the attribute value
+            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
             tests.tests.add_treaments('entity_error')
             return False
         return True
@@ -115,6 +118,7 @@ class ResponseChecker:
         if args[2] is not None:  # if some other attribute name is in the attribute value
             for keys in list(args[2].keys()):
                 if keys in args[1]:
+                    tests.tests.add_treaments("input " + args[0] + ": " + args[1])
                     tests.tests.add_treaments('attribute_error')
                     return False
         return True
@@ -124,6 +128,7 @@ class ResponseChecker:
         propn = False
         for token in tokens:  # if there is a pronoun followed by a comma
             if propn == True and token['entity'] == 'PUNCT':
+                tests.tests.add_treaments("input " + args[0] + ": " + args[1])
                 tests.tests.add_treaments('pronoun_error')
                 return False
             if token['entity'] == 'PROPN':
@@ -144,6 +149,7 @@ class ResponseChecker:
                     tokens_entity.append(token['entity'])
 
         if 'PROPN' in tokens_entity or 'NUM' in tokens_entity:
+            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
             tests.tests.add_treaments('ignoring_error')
             return False
         return True
@@ -162,6 +168,7 @@ class ResponseChecker:
             return True
 
         if float_find in args[1] and (',' not in args[1] and '.' not in args[1]):
+            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
             tests.tests.add_treaments('float_error')
             return False
 
