@@ -105,7 +105,6 @@ class DomainEngine:
 
         sql_cmd = sql_cmd[:-2]  # removing the last comma
         sql_cmd += ")"
-        print("generated query")
         tests.tests.add('generated_query', sql_cmd)
         self.__executeSqlCmd(sql_cmd)
 
@@ -147,6 +146,7 @@ class DomainEngine:
                     sql_cmd += "LOWER(" + k + ") = LOWER('" + where_clause[k] + "') AND "
             sql_cmd = sql_cmd[:-4]  # removing the last AND
             tests.tests.add('generated_query', sql_cmd)
+        print(sql_cmd)
         return self.__executeSqlCmd(sql_cmd)
 
     def read(self, entity, attributes):
