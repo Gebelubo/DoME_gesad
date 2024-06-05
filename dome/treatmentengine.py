@@ -16,7 +16,7 @@ class TreatmentEngine:
         if not self.response_validate({key: new_response}):
             self.change_model()
             new_response = self.__TM.manage(key, value, processed_attributes)
-        tests.tests.add_treaments("output " + key + ": " + new_response)
+        tests.tests.add_treatment_flow("output " + key + ": " + new_response)
         return new_response
 
     def tokenize(self, msg):
@@ -31,6 +31,8 @@ class TreatmentEngine:
         return False
 
     def change_model(self):
+        tests.tests.add_treatment_flow('model_change')
+        tests.tests.add_treatment('model_change')
         if self.model_used == 0:
             self.model_used = 1
         else:
@@ -95,22 +97,22 @@ class ResponseChecker:
 
     def key_test(self, *args):
         if args[0] in args[1]:  # if the attribute value is equal to the name
-            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
-            tests.tests.add_treaments('key_error')
+            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
+            tests.tests.add_treatment_flow('key_error')
             return False
         return True
 
     def and_test(self, *args):
         if " and " in args[1]:  # if there is "and" in the answer
-            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
-            tests.tests.add_treaments('and_error')
+            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
+            tests.tests.add_treatment_flow('and_error')
             return False
         return True
 
     def entity_test(self, *args):
         if self.entity in args[1]:  # if the entity name is in the attribute value
-            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
-            tests.tests.add_treaments('entity_error')
+            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
+            tests.tests.add_treatment_flow('entity_error')
             return False
         return True
 
@@ -118,8 +120,8 @@ class ResponseChecker:
         if args[2] is not None:  # if some other attribute name is in the attribute value
             for keys in list(args[2].keys()):
                 if keys in args[1]:
-                    tests.tests.add_treaments("input " + args[0] + ": " + args[1])
-                    tests.tests.add_treaments('attribute_error')
+                    tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
+                    tests.tests.add_treatment_flow('attribute_error')
                     return False
         return True
 
@@ -128,8 +130,8 @@ class ResponseChecker:
         propn = False
         for token in tokens:  # if there is a pronoun followed by a comma
             if propn == True and token['entity'] == 'PUNCT':
-                tests.tests.add_treaments("input " + args[0] + ": " + args[1])
-                tests.tests.add_treaments('pronoun_error')
+                tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
+                tests.tests.add_treatment_flow('pronoun_error')
                 return False
             if token['entity'] == 'PROPN':
                 propn = True
@@ -149,8 +151,8 @@ class ResponseChecker:
                     tokens_entity.append(token['entity'])
 
         if 'PROPN' in tokens_entity or 'NUM' in tokens_entity:
-            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
-            tests.tests.add_treaments('ignoring_error')
+            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
+            tests.tests.add_treatment_flow('ignoring_error')
             return False
         return True
 
@@ -159,17 +161,18 @@ class ResponseChecker:
         j = 0
         while j < len(self.tokens):
             if self.tokens[j]['entity'] == 'PUNCT' and j > 0:
-                if self.tokens[j + 1]['entity'] == 'NUM' and self.tokens[j - 1]['entity'] == 'NUM':
-                    # exists a float number in the original mensage
-                    float_find = self.tokens[j - 1]['word']
+                if j+1 < len(self.tokens):
+                    if self.tokens[j + 1]['entity'] == 'NUM' and self.tokens[j - 1]['entity'] == 'NUM':
+                        # exists a float number in the original mensage
+                        float_find = self.tokens[j - 1]['word']
             j += 1
 
         if float_find is None:
             return True
 
         if float_find in args[1] and (',' not in args[1] and '.' not in args[1]):
-            tests.tests.add_treaments("input " + args[0] + ": " + args[1])
-            tests.tests.add_treaments('float_error')
+            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
+            tests.tests.add_treatment_flow('float_error')
             return False
 
         return True
@@ -196,23 +199,27 @@ class ResponseFixer:
         if prompt == "simplified_all":  # simplifying the prompt
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             context = 'The answer is a substring of "' + fragment_short + '".'
-            tests.tests.add_treaments('simplified_prompt_treatment')
+            tests.tests.add_treatment('prompt_treatment')
+            tests.tests.add_treatment_flow('simplified_prompt_treatment')
         elif prompt == "simplified_question":  # simplifying the question and enhancing the context
             question = "What is the '" + key + "' in the sentence fragment?"
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             context = "\nThis is the user command: '" + self.user_msg + "'."
             context += 'The answer is a substring of "' + fragment_short + '".'
-            tests.tests.add_treaments('simplified_question_prompt_treatment')
+            tests.tests.add_treatment('prompt_treatment')
+            tests.tests.add_treatment_flow('simplified_question_prompt_treatment')
         elif prompt == "invalid_and":  # case the answer is returning a word after an 'and'
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             fragment_short = fragment_short.split('and')[0]
             context = 'The answer is a substring of "' + fragment_short + '".'
-            tests.tests.add_treaments('and_prompt_treatment')
+            tests.tests.add_treatment('prompt_treatment')
+            tests.tests.add_treatment_flow('and_prompt_treatment')
         elif prompt == "invalid_comma":  # case the answer is returning a word after an invalid ','
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             fragment_short = fragment_short.split(',')[0]
             context = 'The answer is a substring of "' + fragment_short + '".'
-            tests.tests.add_treaments('comma_prompt_treatment')
+            tests.tests.add_treatment_flow('prompt_treatment')
+            tests.tests.add_treatment_flow('comma_prompt_treatment')
         else:
             context = ''
             fragment_short = ''
@@ -227,5 +234,6 @@ class ResponseFixer:
         # getting everything after the attribute key and before an addition marker
         fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
         fragment_short = fragment_short.split('and')[0]
-        tests.tests.add_treaments('and_comma_string_treatment')
+        tests.tests.add_treatment('string_manipulation')
+        tests.tests.add_treatment_flow('and_comma_string_treatment')
         return fragment_short

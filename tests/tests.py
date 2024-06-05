@@ -32,12 +32,15 @@ def add(key, value):
 
 
 def add_output_line():
-    global output_line, treatments
+    global output_line, treatments, treatment_flow
     if treatments:
+        output[output_line]['treatment_flow'] = treatment_flow
         output[output_line]['treatments'] = treatments
-        treatments = []
     else:
-        output[output_line]['treatments'] = "No treatment"
+        output[output_line]['treatment_flow'] = []
+        output[output_line]['treatments'] = []
+    treatment_flow = []
+    treatments = []
     output_line += 1
     initialize_line()
 
@@ -51,13 +54,17 @@ def return_data():
     return input_list[input_line]
 
 
-def add_treaments(report):
-    treatments.append(report)
+def add_treatment_flow(report):
+    treatment_flow.append(report)
+
+def add_treatment(treatment):
+    treatments.append(treatment)
 
 
 input_list = read()
 input_line = 0
 output = []
 output_line = 0
+treatment_flow = []
 treatments = []
 initialize_line()

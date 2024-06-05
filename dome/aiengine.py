@@ -175,7 +175,7 @@ class AIEngine(DAO):
         # 'https://api-inference.huggingface.co/models/google/flan-t5-xxl',
         # 'https://api-inference.huggingface.co/models/google/flan-ul2',
         'https://api-inference.huggingface.co/models/google/flan-t5-large',
-        # 'https://api-inference.huggingface.co/models/google/flan-t5-base',
+         'https://api-inference.huggingface.co/models/google/flan-t5-base',
         # 'https://api-inference.huggingface.co/models/google/flan-t5-xl',
         #'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B',
     ]
@@ -696,12 +696,12 @@ class AIEngine(DAO):
                 # inconsistency in the answer, return none
                 return None, None
 
-            # print("The answer:")
-            # print(processed_attributes)
-            # if treater_obj.response_validate(processed_attributes):
-            #     print("is acceptable")
-            # else:
-            #     print("is not acceptable")
+            print("The answer:")
+            print(processed_attributes)
+            if treater_obj.response_validate(processed_attributes):
+                    print("is acceptable")
+            else:
+                print("is not acceptable")
 
             return processed_attributes, where_clause_attributes
 
