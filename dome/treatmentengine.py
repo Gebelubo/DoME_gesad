@@ -1,22 +1,25 @@
 import tests.tests
+import re
 
 
 class TreatmentEngine:
-    def __init__(self, parser):
+    def __init__(self, parser, test):
         self.__MP = parser
+        self.__Test = test
         self.__AIE = self.__MP.get_ai_engine()
         self.entity = self.__MP.entity_class
         self.user_msg = self.__MP.user_msg
         self.tokens = self.__MP.tokens
-        self.__TM = TreatmentManager(ResponseChecker(self), ResponseFixer(self))
+        self.__TM = TreatmentManager(ResponseChecker(self, test), ResponseFixer(self, test))
         self.model_used = 0
 
     def treat(self, key, value, processed_attributes):
         new_response = self.__TM.manage(key, value, processed_attributes)
+        new_response = re.sub(r'^\s+|\s+$', '', new_response)
+        new_response = new_response.replace('=', '').replace("'", '').replace('"', '').replace('\\', '').replace('/','')
         if not self.response_validate({key: new_response}):
             self.change_model()
             new_response = self.__TM.manage(key, value, processed_attributes)
-        tests.tests.add_treatment_flow("output " + key + ": " + new_response)
         return new_response
 
     def tokenize(self, msg):
@@ -31,8 +34,6 @@ class TreatmentEngine:
         return False
 
     def change_model(self):
-        tests.tests.add_treatment_flow('model_change')
-        tests.tests.add_treatment('model_change')
         if self.model_used == 0:
             self.model_used = 1
         else:
@@ -45,6 +46,7 @@ class TreatmentManager:
         self.__RF = fixer_obj
 
     def manage(self, key, value, processed_attributes):
+
         valid = self.__RC.check(key, value, processed_attributes)
 
         if valid:
@@ -56,16 +58,27 @@ class TreatmentManager:
         new_value = self.manage_prompt(key, new_value, processed_attributes)
         if new_value is not None:
             return new_value
+        
+        new_value = self.__RF.searching_treatment(key, value)
+        if self.__RC.check(key, new_value, processed_attributes):
+            return new_value
+        
         # if not work try to find anyway
-        new_value = self.__RF.string_treatment(key)
+        new_value = self.__RF.string_and_treatment(key)
+        if self.__RC.check(key, new_value, processed_attributes):
+            return new_value
+        
+        new_value = self.__RF.string_noise_treatment(key)
         if self.__RC.check(key, new_value, processed_attributes):
             return new_value
 
         return value
 
     def manage_prompt(self, key, value, processed_attributes):
-        prompts = ["simplified_all", "simplified_question", "invalid_and", "invalid_comma"]
+        prompts = ["simplified_all", "simplified_question", "invalid_and", "invalid_comma", "simplified_max"]
         for prompt in prompts:
+            print(prompt)
+            print(key)
             new_value = self.__RF.prompt_treatment(key, prompt)['answer']
             if self.__RC.check(key, new_value, processed_attributes):
                 return new_value
@@ -82,12 +95,13 @@ class TreatmentManager:
 
 
 class ResponseChecker:
-    def __init__(self, treatment_engine):
+    def __init__(self, treatment_engine, test):
         self.__TE = treatment_engine
+        self.__Test = test
         self.entity = self.__TE.entity
         self.tokens = self.__TE.tokens
         self.methods = [self.key_test, self.and_test, self.entity_test, self.attributes_test, self.pronoun_test,
-                        self.ignoring_test, self.float_test]
+                        self.ignoring_test, self.float_test, self.character_test]
 
     def check(self, key, value, processed_attributes):
         for method in self.methods:
@@ -97,22 +111,19 @@ class ResponseChecker:
 
     def key_test(self, *args):
         if args[0] in args[1]:  # if the attribute value is equal to the name
-            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
-            tests.tests.add_treatment_flow('key_error')
+            self.__Test.add_treatment_flow("key_test")
             return False
         return True
 
     def and_test(self, *args):
         if " and " in args[1]:  # if there is "and" in the answer
-            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
-            tests.tests.add_treatment_flow('and_error')
+            self.__Test.add_treatment_flow("and_test")
             return False
         return True
 
     def entity_test(self, *args):
         if self.entity in args[1]:  # if the entity name is in the attribute value
-            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
-            tests.tests.add_treatment_flow('entity_error')
+            self.__Test.add_treatment_flow("entity_test")
             return False
         return True
 
@@ -120,8 +131,7 @@ class ResponseChecker:
         if args[2] is not None:  # if some other attribute name is in the attribute value
             for keys in list(args[2].keys()):
                 if keys in args[1]:
-                    tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
-                    tests.tests.add_treatment_flow('attribute_error')
+                    self.__Test.add_treatment_flow("attributes_test")
                     return False
         return True
 
@@ -130,8 +140,7 @@ class ResponseChecker:
         propn = False
         for token in tokens:  # if there is a pronoun followed by a comma
             if propn == True and token['entity'] == 'PUNCT':
-                tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
-                tests.tests.add_treatment_flow('pronoun_error')
+                self.__Test.add_treatment_flow("pronoun_test")
                 return False
             if token['entity'] == 'PROPN':
                 propn = True
@@ -151,8 +160,7 @@ class ResponseChecker:
                     tokens_entity.append(token['entity'])
 
         if 'PROPN' in tokens_entity or 'NUM' in tokens_entity:
-            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
-            tests.tests.add_treatment_flow('ignoring_error')
+            self.__Test.add_treatment_flow("ignoring test")
             return False
         return True
 
@@ -161,7 +169,7 @@ class ResponseChecker:
         j = 0
         while j < len(self.tokens):
             if self.tokens[j]['entity'] == 'PUNCT' and j > 0:
-                if j+1 < len(self.tokens):
+                if j+1<len(self.tokens):
                     if self.tokens[j + 1]['entity'] == 'NUM' and self.tokens[j - 1]['entity'] == 'NUM':
                         # exists a float number in the original mensage
                         float_find = self.tokens[j - 1]['word']
@@ -171,20 +179,33 @@ class ResponseChecker:
             return True
 
         if float_find in args[1] and (',' not in args[1] and '.' not in args[1]):
-            tests.tests.add_treatment_flow("input " + args[0] + ": " + args[1])
-            tests.tests.add_treatment_flow('float_error')
+            self.__Test.add_treatment_flow("float_test")
             return False
 
         return True
 
+    def character_test(self, *args):
+        tokens = self.__TE.tokenize(args[1])
+        potential_value = False
+        for token in tokens:  # if there is some "noise character" on the final answer
+            if potential_value == True and token['entity'] == 'SYM':
+                self.__Test.add_treatment_flow("character_test")
+                return False
+            if token['entity'] == 'PROPN' or token['entity'] == 'NUM':
+                potential_value = True
+        return True
+
 
 class ResponseFixer:
-    def __init__(self, treatment_engine):
+    def __init__(self, treatment_engine, test):
         self.__TE = treatment_engine
+        self.__Test = test
         self.entity = self.__TE.entity
         self.user_msg = self.__TE.user_msg
 
     def prompt_treatment(self, key, prompt):
+
+        self.__Test.add_treatment_flow("attribute: " + key)
 
         if key is None:
             # error
@@ -199,41 +220,87 @@ class ResponseFixer:
         if prompt == "simplified_all":  # simplifying the prompt
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             context = 'The answer is a substring of "' + fragment_short + '".'
-            tests.tests.add_treatment('prompt_treatment')
-            tests.tests.add_treatment_flow('simplified_prompt_treatment')
+            self.__Test.add_treatment_flow("simplified_all_treatment")
+            self.__Test.add_treatment("simplified_all_treatment")
         elif prompt == "simplified_question":  # simplifying the question and enhancing the context
             question = "What is the '" + key + "' in the sentence fragment?"
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             context = "\nThis is the user command: '" + self.user_msg + "'."
             context += 'The answer is a substring of "' + fragment_short + '".'
-            tests.tests.add_treatment('prompt_treatment')
-            tests.tests.add_treatment_flow('simplified_question_prompt_treatment')
+            self.__Test.add_treatment_flow("simplified_question_treatment")
+            self.__Test.add_treatment("simplified_question_treatment")
         elif prompt == "invalid_and":  # case the answer is returning a word after an 'and'
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             fragment_short = fragment_short.split('and')[0]
             context = 'The answer is a substring of "' + fragment_short + '".'
-            tests.tests.add_treatment('prompt_treatment')
-            tests.tests.add_treatment_flow('and_prompt_treatment')
+            self.__Test.add_treatment_flow("invalid and_treatment")
+            self.__Test.add_treatment("invalid_and_treatment")
         elif prompt == "invalid_comma":  # case the answer is returning a word after an invalid ','
             fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
             fragment_short = fragment_short.split(',')[0]
             context = 'The answer is a substring of "' + fragment_short + '".'
-            tests.tests.add_treatment_flow('prompt_treatment')
-            tests.tests.add_treatment_flow('comma_prompt_treatment')
+            self.__Test.add_treatment_flow("invalid_comma_treatment")
+            self.__Test.add_treatment("invalid_comma_treatment")
+        elif prompt == "simplified_max":
+            question = (
+    f"Identify the value assigned to '{key}' in the following user command. Return only the value. "
+    f"value mentioned in the user command. Return only the value. \n\nUser command: '{self.user_msg}' "
+    f"\nValue of '{key}': "
+            )   
+            self.__Test.add_treatment_flow("simplified_max_treatment")
+            self.__Test.add_treatment("simplified_max_treatment")
         else:
             context = ''
             fragment_short = ''
 
         response = self.__TE.question_answerer_remote(question, context)
+        print(response)
+        self.__Test.add_treatment_flow("output: " + response['answer'])
         if response['answer'] is not None and response['answer'] != 'None':
             return response
         else:
             return {'answer': fragment_short}
 
-    def string_treatment(self, key):
+    def searching_treatment(self, key, value):
+        print("searching")
+        print(value)
+        self.__Test.add_treatment_flow("attribute: " + key)
+        self.__Test.add_treatment_flow("searching_treatment")
+        self.__Test.add_treatment_flow("searching_treatment")
+        list_value = value.replace('\n', ' ')
+        list_value = value.split()
+        answer = ''
+        print(list_value)
+        fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
+        for word in list_value:
+            print(word)
+            if word.isalnum():
+                if word in fragment_short:
+                    print("vai retornar")
+                    print(word)
+                    answer = word
+                    break
+        if not answer:
+            print("retornou value")
+            answer = value
+        answer = answer.replace('=', '').replace("'", '').replace('"', '').replace('\\', '').replace('/','')
+        self.__Test.add_treatment_flow("output: " + answer)
+        return answer
+
+    def string_and_treatment(self, key):
         # getting everything after the attribute key and before an addition marker
         fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
         fragment_short = fragment_short.split('and')[0]
-        tests.tests.add_treatment('string_manipulation')
-        tests.tests.add_treatment_flow('and_comma_string_treatment')
+        self.__Test.add_treatment_flow("attribute: " + key)
+        self.__Test.add_treatment_flow("string_and_treatment")
+        self.__Test.add_treatment("string_and_treatment")
         return fragment_short
+    
+    def string_noise_treatment(self, key):
+        fragment_short = self.user_msg[self.user_msg.find(key) + len(key):]
+        fragment_short = fragment_short.replace('=', '').replace("'", '').replace('"', '')
+        self.__Test.add_treatment_flow("output: " + key)
+        self.__Test.add_treatment_flow("string_noise_treatment")
+        self.__Test.add_treatment_flow("string_noise_treatment")
+        return fragment_short
+    

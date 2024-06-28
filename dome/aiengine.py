@@ -147,13 +147,25 @@ class AIEngine(DAO):
         return False
 
     @staticmethod
-    def __call_remote_model(api_url, input_text):
-        payload = {"inputs": input_text, "options": {"use_cache": True, "wait_for_model": True}}
-        __response = requests.post(api_url, headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}, json=payload)
+    def __call_remote_model(model, input_text):
+        api_url = "http://localhost:11434/api/generate"
+        payload = {
+        "model": model,
+        "prompt": input_text,
+        "stream": False  
+        }
+        headers = {
+        "Content-Type": "application/json"
+        }
+        print("model")
+        print(model)
+        print("input")
+        print(input_text)
+        __response = requests.post(api_url, headers=headers, json=payload)
         return __response.json()
 
     @staticmethod
-    def __prompt_remote_model(api_url, question_, context_, options_=None, only_question=False):
+    def __prompt_remote_model(model, question_, context_, options_=None, only_question=False):
         input_text = '-QUESTION: %s-CONTEXT: %s' % (question_ + '\n', context_)
         if options_:
             input_text += '\n-OPTIONS: %s' % options_
@@ -163,29 +175,21 @@ class AIEngine(DAO):
             print('PROMPT -------------------')
             print(input_text)
             print('--------------------------')
-        return AIEngine.__call_remote_model(api_url, input_text)
+        return AIEngine.__call_remote_model(model, input_text)
 
-    MODELS_API_URLS = [  # 'https://api-inference.huggingface.co/models/google/flan-t5-xl',
-        # https://huggingface.co/Intel/dynamic_tinybert
-        # 'https://api-inference.huggingface.co/models/Intel/dynamic_tinybert',
-        # https://huggingface.co/distilbert-base-cased-distilled-squad
-        # 'https://api-inference.huggingface.co/models/distilbert-base-cased-distilled-squad',
-        # https://huggingface.co/deepset/roberta-base-squad2
-        # 'https://api-inference.huggingface.co/models/deepset/roberta-base-squad2',
-        # 'https://api-inference.huggingface.co/models/google/flan-t5-xxl',
-        # 'https://api-inference.huggingface.co/models/google/flan-ul2',
-        'https://api-inference.huggingface.co/models/google/flan-t5-large',
-         'https://api-inference.huggingface.co/models/google/flan-t5-base',
-        # 'https://api-inference.huggingface.co/models/google/flan-t5-xl',
-        #'https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B',
+    MODELS = [  
+        'llama3',
+        'phi3'
     ]
 
     @staticmethod
     def question_answerer_remote(question, context, options='', only_question=False, model=0):
         answers_keys = set()
         last_answer = None
-        last_answer = AIEngine.__prompt_remote_model(AIEngine.MODELS_API_URLS[model], question, context, options, only_question)
-        last_answer = last_answer[0]['generated_text']
+        last_answer = AIEngine.__prompt_remote_model(AIEngine.MODELS[model], question, context, options, only_question)
+        print("last answer")
+        print(last_answer)
+        last_answer = last_answer['response']
         last_answer = {"answer": last_answer}
 
         if DEBUG_MODE and PRINT_DEBUG_MSGS:
@@ -229,10 +233,11 @@ class AIEngine(DAO):
         def get_bot_context():
             return AIEngine.GENERAL_BOT_CONTEXT
 
-        def __init__(self, user_msg, aie_obj) -> None:
+        def __init__(self, user_msg, aie_obj, test) -> None:
             self.user_msg = user_msg
             # removing double spaces from self.user_msg
             self.user_msg = re.sub(' +', ' ', self.user_msg)
+            self.__Test = test
             self.__AIE = aie_obj
             self.intent = None
             self.entity_class = None
@@ -437,6 +442,9 @@ class AIEngine(DAO):
                            + self.user_msg + "'. Identify the referred entity class. The entity class must be a noun upon which " \
                                              "the user is requesting an " + str(
                     self.intent) + " operation.\nOptions: " + options + "."
+                question = 'Identify the referred entity class in the following user request. Return only the entity class name.'
+                question += '\n\nUser request: ' + self.user_msg
+                question += '\nEntity class: '
                 response = self.__AIE.question_answerer_remote(question, context, options, True)
                 entity_class_candidate = response['answer']
             if entity_class_candidate == 'CRUD' or entity_class_candidate == self.intent:
@@ -446,11 +454,14 @@ class AIEngine(DAO):
 
             cached_entity_class = self.__AIE.get_entity_name_by_alternative(entity_class_candidate)
             if cached_entity_class:
+                print("entity")
+                print(cached_entity_class)
                 return cached_entity_class
             # else
             # add the entity class to the cache
             # update the entity_class_candidate replacing special characters for '_'
             entity_class_candidate_original = entity_class_candidate
+            entity_class_candidate = re.sub(r'^\s+|\s+$', '', entity_class_candidate)
             entity_class_candidate = re.sub(r'[^a-zA-Z0-9_]', '_', entity_class_candidate)
             if self.intent in [Intent.ADD, Intent.UPDATE]:
                 self.__AIE.add_alternative_entity_name(entity_class_candidate, entity_class_candidate)
@@ -458,7 +469,7 @@ class AIEngine(DAO):
             return entity_class_candidate
 
         def __get_attributes_from_msg(self) -> tuple:
-            treater_obj = TreatmentEngine(self)
+            treater_obj = TreatmentEngine(self, self.__Test)
             processed_attributes = {}
             CONTEXT_PREFIX = "This is the user command: '"
             where_clause = None
@@ -559,7 +570,7 @@ class AIEngine(DAO):
                 att_context += '\n"' + attribute_target + '" is the name of a field in database.'
                 att_context += '\nI\'m trying discover the value of the "' + attribute_target + \
                                '" in the sentence fragment.'
-                att_context += '\nIn another words, complete to me "' + attribute_target + '=" ?'
+                att_context += '\nIn another words, complete to me "' + attribute_target + ' = " ?'
 
                 for att_name, att_value in considered_attributes.items():
                     att_context += "\nThe field '" + att_name + "' has the value '" + att_value + "'. "
@@ -574,6 +585,9 @@ class AIEngine(DAO):
             for i, token_i in enumerate(self.tokens):
                 # advance forward until the token of the entity class is found
                 if self.__AIE.get_entity_name_by_alternative(token_i['word']) == self.entity_class:
+                    entity_class_token_idx = i
+                    break
+                elif self.__AIE.get_entity_name_by_alternative(token_i['word']) == self.entity_class.lower():
                     entity_class_token_idx = i
                     break
 
@@ -622,7 +636,6 @@ class AIEngine(DAO):
                             j += 1
                     else:
                         j += 1
-
                 if token_j:
                     if analytic_opr['operation'] is not None:
                         if 'entity' not in analytic_opr:
@@ -641,14 +654,16 @@ class AIEngine(DAO):
                                                                "\nAnswer me with the exact substring of the sentence fragment." \
                                                                "\nAnswer me with only the value of the attribute."
                                                                "\nThe answer must be diferent from '" + attribute_name + "'."
-                                                      , context=__get_attributes_context(attribute_name, token_j))
+                                                      , context=__get_attributes_context(attribute_name, token_j), model=1)
                     # update the j index to the next token after the attribute value
                     # get the end index in the original msg
 
                     # treatment here
-
+                    print("answer")
                     response['answer'] = treater_obj.treat(attribute_name, response['answer'], processed_attributes)
+                    print(response)
                     att_value_idx_end = self.user_msg.find(response['answer'], token_j['end'])
+                    print(att_value_idx_end)
                     if att_value_idx_end == -1:
                         # trying to find the attribute value anywhere
                         att_value_idx_end = self.user_msg.find(response['answer'], 0)
@@ -694,15 +709,18 @@ class AIEngine(DAO):
 
             if self.intent == Intent.UPDATE and (not processed_attributes or not where_clause_attributes):
                 # inconsistency in the answer, return none
+                print("1")
                 return None, None
 
-            print("The answer:")
-            print(processed_attributes)
-            if treater_obj.response_validate(processed_attributes):
-                    print("is acceptable")
-            else:
-                print("is not acceptable")
-
+            # print("The answer:")
+            # print(processed_attributes)
+            # if treater_obj.response_validate(processed_attributes):
+            #     print("is acceptable")
+            # else:
+            #     print("is not acceptable")
+            print("2")
+            print(attribute_value)
+            self.__Test.generated_response = processed_attributes
             return processed_attributes, where_clause_attributes
 
         def get_tokens_by_type(self, entityType) -> list:
@@ -717,7 +735,7 @@ class AIEngine(DAO):
 
         def set_parser():
             nonlocal msg_parser
-            msg_parser = self.__MsgParser(msg, self)
+            msg_parser = self.__MsgParser(msg, self, self.__AC.get_test_obj())
 
         thread = threading.Thread(target=set_parser, name="MsgParser", daemon=True)
         # starting the thread and join with timeout to avoid deadlocks

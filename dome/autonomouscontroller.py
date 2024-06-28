@@ -4,6 +4,7 @@ import time
 import logging, logging.config
 
 from dome import config
+from tests import tests
 from dome.aiengine import AIEngine, Intent
 from dome.auxiliary.constants import (
     OPR_APP_HOME_CMD,
@@ -62,9 +63,10 @@ logger.setLevel(logging.INFO)
 
 class AutonomousController:
     def __init__(self, SE):
+        self.__Test = tests.Test("input.json", "output.json")
         self.__SE = SE  # Security Engine object
         self.__IC = InterfaceController(self)  # Interface Controller object
-        self.__DE = DomainEngine(self)  # Domain Engine object
+        self.__DE = DomainEngine(self, self.__Test)  # Domain Engine object
         self.__AIE = AIEngine(self)  # Artificial Intelligence Engine object
         self.__AE = AnalyticsEngine(self) # Analytics toolset
 
@@ -113,6 +115,9 @@ class AutonomousController:
     def getEntities(self) -> list:
         return self.__DE.getEntities()
 
+    def get_test_obj(self):
+        return self.__Test
+
     @staticmethod
     def clear_opr(user_data):
         user_data["previous_intent"] = None
@@ -159,6 +164,14 @@ class AutonomousController:
         
         logger.info('[user_id: %s] user_msg: %s', user_data['id'], msg)
         try:
+            if config.TEST_MODE:
+                for index, input in enumerate(self.__Test.input):
+                    response = self.app_chatbot_msg_process(input['input'], user_data=user_data)
+                    print(response)
+                    self.__Test.insert_data(index)
+                config.TEST_MODE=False
+                msg = "hi"
+                self.__Test.write()
             response = self.app_chatbot_msg_process(msg, user_data=user_data)
         except BaseException as e:
             print('GENERAL_FAILURE', e)

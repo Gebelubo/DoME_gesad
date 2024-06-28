@@ -6,6 +6,8 @@ from dome.config import LIMIT_REGISTERS, DATE_KEYWORDS, ANALYTICS
 from util import list_util, date_util
 from datetime import datetime
 
+import tests
+
 class AnalyticsEngine:
     def __init__(self, AC):
         # self.__IC = IC
@@ -68,7 +70,7 @@ class AnalyticsEngine:
 
         if result[0] == None:
             return -1
-
+        
         return result[0]
     
     def lowest(self, entity, attribute):
@@ -143,6 +145,7 @@ class AnalyticsEngine:
             # else
             results = pd.DataFrame.from_records(data=data, columns=cols, index=['id'])
             results.drop(['dome_created_at', 'dome_updated_at'], axis=1, inplace=True)
+            
             return results
         else:
             return None

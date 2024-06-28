@@ -1,0 +1,7 @@
+[
+  {
+    "input": "add student with name Victor and note 10",
+    "expected_query": "INSERT OR REPLACE INTO managedsys_web_customer(dome_created_at, dome_updated_at, name) values((datetime('now', 'localtime')), (datetime('now', 'localtime')), 'Gabriel')",
+    "expected_result": "Ok! I got it!\nWe are going to <b>ADD</b> a <b>Customer</b>.\nWith <b>name: <i>Gabriel</i></b>.\nSay <b>OK</b> to confirm or <b>CANCEL</b> to cancel this operation."
+  }
+]

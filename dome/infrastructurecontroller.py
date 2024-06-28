@@ -67,7 +67,7 @@ class InterfaceController:
             self.__runSyncCmd('. bin/activate')
 
         # updating o pip
-        self.__runSyncCmd('Scripts\\python.exe -m pip install --upgrade pip')
+        #self.__runSyncCmd('Scripts\\python.exe -m pip install --upgrade pip')
         # install django in virtual environment
         self.__runSyncCmd('Scripts\\pip.exe install django==4.1.3')
         self.__runSyncCmd('Scripts\\pip.exe install django3-livesync==1')
@@ -93,7 +93,7 @@ class InterfaceController:
             
             for line in fileinput.FileInput(path, inplace=1):
                 if "    'django.contrib.staticfiles'," in line:
-                    line = line.replace(line, "    'livesync',\n" + line + "    '" + self.__webapp_path
+                    line = line.replace(line, "'livesync',\n" + line + "    '" + self.__webapp_path
                                         + '.apps.' + self.__webapp_path.replace('_', ' ').title().replace(' ', '')
                                         + "Config',")
                 elif "MIDDLEWARE = [" in line:

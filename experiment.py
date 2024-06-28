@@ -7,3 +7,4 @@ from dome import multichannelapp as MUP
 
 # MUP.MultiChannelApp(run_telegram=False, run_server=True) # to run server http
 MUP.MultiChannelApp(run_telegram=True, run_server=False) # to run telegram bot
+
